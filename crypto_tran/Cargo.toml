@@ -1,5 +1,5 @@
 [package]
-name = "crypto_test"
+name = "crypto_tran"
 version = "0.1.0"
 edition = "2021"
 
