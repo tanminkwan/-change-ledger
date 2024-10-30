@@ -9,6 +9,7 @@ use crypto_tran::{
     generate_symmetric_key,
     encrypt,
     decrypt,
+    save_transaction_to_db,
 }; 
 use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
 use hex; // hex 크레이트 임포트
@@ -76,6 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 역직렬화
     let deserialized = Transaction::deserialize(&decrypted_serialized)?;
     println!("Deserialized Transaction: {:?}", deserialized);
+
+    // SQLite 데이터베이스에 트랜잭션 저장
+    save_transaction_to_db(&deserialized)?;
 
     Ok(())
 

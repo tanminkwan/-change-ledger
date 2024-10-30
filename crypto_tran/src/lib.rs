@@ -1,5 +1,17 @@
 // src/lib.rs
 
+#[macro_use]
+extern crate diesel;
+
+pub mod schema;
+
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
+use dotenvy::dotenv;
+use std::env;
+
+use self::schema::transactions;
+use self::schema::transactions::dsl::*;
 use rsa::{RsaPrivateKey, RsaPublicKey};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use rsa::pkcs1v15;
@@ -53,37 +65,38 @@ pub fn read_public_key_from_pem<P: AsRef<Path>>(path: P) -> Result<RsaPublicKey,
 }
 
 // Transaction 구조체 정의
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Queryable, Insertable)]
+#[table_name = "transactions"]
 pub struct Transaction {
-    transaction_id: String,
-    sender_id: String,
-    recipient_id: String,
-    amount: f64,
-    timestamp: u64,
-    signature: Option<String>, // 서명 필드
+    pub id: String,
+    pub sender_id: String,
+    pub recipient_id: String,
+    pub amount: f64,
+    pub timestamp: i64,
+    pub signature: Option<String>,
+    pub prev_hash: Option<String>,
+    pub current_hash: Option<String>,
 }
 
 impl Transaction {
     // 생성자 함수
-    pub fn new(sender_id: String, recipient_id: String, amount: f64) -> Self {
-        let transaction_id = Uuid::new_v4()
-            .to_string()
-            .chars()
-            .take(16)
-            .collect();
-
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
+    pub fn new(
+        sender_id_: String,
+        recipient_id_: String,
+        amount_: f64,
+    ) -> Self {
+        let id_ = Uuid::new_v4().to_string();
+        let timestamp_ = chrono::Utc::now().timestamp();
 
         Transaction {
-            transaction_id,
-            sender_id,
-            recipient_id,
-            amount,
-            timestamp,
+            id: id_,
+            sender_id: sender_id_,
+            recipient_id: recipient_id_,
+            amount: amount_,
+            timestamp: timestamp_,
             signature: None, // 초기 서명 값은 None
+            prev_hash: None,
+            current_hash: None,
         }
     }
 
@@ -104,6 +117,8 @@ impl Transaction {
         // 임시로 `Transaction`의 사본을 만들어 `signature` 필드를 제거하고 직렬화
         let mut temp_transaction = self.clone();
         temp_transaction.signature = None;
+        temp_transaction.prev_hash = None;
+        temp_transaction.current_hash = None;
         let json = serde_json::to_string(&temp_transaction)?;
         Ok(json)
     }
@@ -119,10 +134,10 @@ impl Transaction {
 
         // 개인 키로 PKCS1 v1.5 방식으로 서명 생성
         let padding = pkcs1v15::Pkcs1v15Sign::new::<Sha256>();
-        let signature = private_key.sign(padding, &hashed)?;
+        let signature_ = private_key.sign(padding, &hashed)?;
 
         // 서명을 Base64로 인코딩하여 저장
-        self.signature = Some(base64::encode(signature));
+        self.signature = Some(base64::encode(signature_));
         Ok(())
     }
 
@@ -137,9 +152,9 @@ impl Transaction {
             let hashed = hasher.finalize();
 
             // 서명을 디코딩하고 검증
-            let signature = base64::decode(signature_base64)?;
+            let signature_ = base64::decode(signature_base64)?;
             let padding = pkcs1v15::Pkcs1v15Sign::new::<Sha256>();
-            public_key.verify(padding, &hashed, &signature).map(|_| true).map_err(|e| e.into())
+            public_key.verify(padding, &hashed, &signature_).map(|_| true).map_err(|e| e.into())
         } else {
             Ok(false)
         }
@@ -151,12 +166,14 @@ impl Transaction {
 impl Clone for Transaction {
     fn clone(&self) -> Self {
         Transaction {
-            transaction_id: self.transaction_id.clone(),
+            id: self.id.clone(),
             sender_id: self.sender_id.clone(),
             recipient_id: self.recipient_id.clone(),
             amount: self.amount,
             timestamp: self.timestamp,
             signature: self.signature.clone(),
+            prev_hash: self.prev_hash.clone(),
+            current_hash: self.current_hash.clone(),
         }
     }
 }
@@ -199,4 +216,26 @@ pub fn decrypt(encrypted_data: &[u8], key: &[u8; 32], iv: &[u8; 12]) -> Result<S
     let decrypted_str = String::from_utf8(decrypted_data)?;
 
     Ok(decrypted_str)
+}
+
+// 데이터베이스 연결 함수
+pub fn establish_connection() -> SqliteConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    SqliteConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
+
+// 트랜잭션 저장 함수
+pub fn save_transaction_to_db(transaction: &Transaction) -> Result<(), Box<dyn std::error::Error>> {
+    let conn = &mut establish_connection();
+
+    diesel::insert_into(transactions::table)
+        .values(transaction)
+        .execute(conn)?;
+
+    println!("트랜잭션이 데이터베이스에 저장되었습니다.");
+
+    Ok(())
 }
