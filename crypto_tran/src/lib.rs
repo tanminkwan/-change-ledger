@@ -1,6 +1,6 @@
 // src/lib.rs
 
-#[macro_use]
+//#[macro_use]
 extern crate diesel;
 
 pub mod schema;
@@ -9,7 +9,6 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenvy::dotenv;
 use std::env;
-
 use self::schema::transactions;
 use self::schema::transactions::dsl::*;
 use rsa::{RsaPrivateKey, RsaPublicKey};
@@ -22,7 +21,7 @@ use std::path::Path;
 use serde::{Serialize, Deserialize};
 use serde_json;
 use std::error::Error;
-use std::time::{SystemTime, UNIX_EPOCH};
+//use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
 use base64;
@@ -66,7 +65,7 @@ pub fn read_public_key_from_pem<P: AsRef<Path>>(path: P) -> Result<RsaPublicKey,
 
 // Transaction 구조체 정의
 #[derive(Serialize, Deserialize, Debug, Queryable, Insertable)]
-#[table_name = "transactions"]
+#[diesel(table_name = transactions)]
 pub struct Transaction {
     pub id: String,
     pub sender_id: String,
@@ -160,6 +159,22 @@ impl Transaction {
         }
     }
 
+    // current_hash 계산을 위한 메서드 추가
+    pub fn calculate_current_hash(&self) -> Result<String, Box<dyn Error>> {
+        // signature와 current_hash를 제외하고 직렬화 (prev_hash는 포함)
+        let mut temp_transaction = self.clone();
+        temp_transaction.signature = None;
+        temp_transaction.current_hash = None;
+        let serialized = serde_json::to_string(&temp_transaction)?;
+    
+        // SHA-256 해시 계산
+        let mut hasher = Sha256::new();
+        hasher.update(serialized.as_bytes());
+        let hashed = hasher.finalize();
+    
+        Ok(format!("{:x}", hashed))
+    }
+
 }
 
 // 트랜잭션 구조체의 `Clone` 트레이트를 구현
@@ -227,10 +242,24 @@ pub fn establish_connection() -> SqliteConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-// 트랜잭션 저장 함수
-pub fn save_transaction_to_db(transaction: &Transaction) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = &mut establish_connection();
+// Function to get the previous hash from the last transaction
+pub fn get_prev_hash(conn: &mut SqliteConnection) -> Result<String, Box<dyn std::error::Error>> {
+    // Retrieve the last transaction ordered by timestamp descending
+    let last_transaction: Option<Transaction> = transactions::table
+        .order(timestamp.desc())
+        .first(conn)
+        .optional()?;
 
+    // If a transaction exists, return its current_hash; else return '0' * 64
+    if let Some(last_tx) = last_transaction {
+        Ok(last_tx.current_hash.clone().unwrap_or_else(|| "0".repeat(64)))
+    } else {
+        Ok("0".repeat(64))
+    }
+}
+
+// Updated function signature to accept a connection parameter
+pub fn save_transaction_to_db(transaction: &Transaction, conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     diesel::insert_into(transactions::table)
         .values(transaction)
         .execute(conn)?;

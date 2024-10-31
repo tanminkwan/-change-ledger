@@ -9,7 +9,9 @@ use crypto_tran::{
     generate_symmetric_key,
     encrypt,
     decrypt,
+    establish_connection,
     save_transaction_to_db,
+    get_prev_hash,
 }; 
 use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
 use hex; // hex 크레이트 임포트
@@ -47,10 +49,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     transaction.sign(&private_key)?;
     println!("Signed Transaction: {:?}", transaction);
     
-    // 서명 검증
-    let is_valid = transaction.verify_signature(&public_key)?;
-    println!("Signature valid: {}", is_valid);
-    
     // 직렬화
     let serialized = transaction.serialize()?;
     println!("Serialized JSON: {}", serialized);
@@ -75,11 +73,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("복호화된 직렬화 데이터: {}", decrypted_serialized);
 
     // 역직렬화
-    let deserialized = Transaction::deserialize(&decrypted_serialized)?;
+    let mut deserialized = Transaction::deserialize(&decrypted_serialized)?;
     println!("Deserialized Transaction: {:?}", deserialized);
 
+    // 서명 검증
+    let is_valid = deserialized.verify_signature(&public_key)?;
+    println!("Signature valid: {}", is_valid);
+    
+    // 데이터베이스에서 이전 트랜잭션의 current_hash를 가져와 prev_hash로 설정
+    let conn = &mut establish_connection();
+
+    // Get the previous hash using the new function
+    let prev_hash = get_prev_hash(conn)?;
+    deserialized.prev_hash = Some(prev_hash);
+
+    // Calculate `current_hash`
+    let current_hash = deserialized.calculate_current_hash()?;
+    deserialized.current_hash = Some(current_hash);
+
+    println!("Transaction to insert: {:?}", deserialized);
+
     // SQLite 데이터베이스에 트랜잭션 저장
-    save_transaction_to_db(&deserialized)?;
+    save_transaction_to_db(&deserialized, conn)?;
 
     Ok(())
 

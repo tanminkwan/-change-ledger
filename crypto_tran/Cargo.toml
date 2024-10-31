@@ -19,4 +19,4 @@ hex = "0.4"
 diesel = { version = "2.2.4", features = ["sqlite", "serde_json"] }
 dotenvy = "0.15.6"
 chrono = { version = "0.4", features = ["serde"] }
-libsqlite3-sys = { version = "0.25.2", features = ["bundled"] }
+libsqlite3-sys = { version = "0.25.2", features = ["bundled"] } # 제외 시 : fatal error LNK1181: 'sqlite3.lib' 입력 파일을 열 수 없습니다.

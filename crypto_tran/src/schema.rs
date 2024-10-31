@@ -2,7 +2,7 @@
 
 diesel::table! {
     transactions (id) {
-        id -> Nullable<Text>,
+        id -> Text,
         sender_id -> Text,
         recipient_id -> Text,
         amount -> Double,
