@@ -16,3 +16,7 @@ base64 = "0.13"     # Base64 인코딩 및 디코딩을 위한 크레이트
 sha2 = { version = "0.10", features = ["oid"] }
 signature = "1.6.2"  # 서명 및 검증을 위한 크레이트
 hex = "0.4"
+diesel = { version = "2.2.4", features = ["sqlite", "serde_json"] }
+dotenvy = "0.15.6"
+chrono = { version = "0.4", features = ["serde"] }
+libsqlite3-sys = { version = "0.25.2", features = ["bundled"] } # 제외 시 : fatal error LNK1181: 'sqlite3.lib' 입력 파일을 열 수 없습니다.

@@ -1,4 +1,65 @@
-# -change-ledger
+# CryptoTran
+
+## Overview
+CryptoTran is a Rust-based project designed to implement secure, encrypted transactions using asymmetric (RSA) and symmetric (AES-GCM) encryption. This project demonstrates a secure way to exchange transaction data between two parties (Offerer and Answerer), ensuring the confidentiality, integrity, and authenticity of the transactions.
+
+## Key Features
+- **RSA Key Pair Generation**: Generate RSA public and private keys for both Offerer and Answerer.
+- **Transaction Signing**: Sign the transaction using the Offerer's private key.
+- **Symmetric Key Generation**: Use AES-256 GCM for fast, secure encryption.
+- **Secure Key Exchange**: Encrypt the AES symmetric key with the Answerer's public RSA key.
+- **Data Storage**: Store completed transactions in a SQLite database, maintaining a hash-based linkage.
+
+## How It Works
+The process involves two primary participants, Offerer and Answerer, who securely exchange an encrypted transaction.
+
+### Steps:
+1. **Key Generation**: Both Offerer and Answerer generate RSA key pairs.
+2. **Transaction Creation**: Offerer creates a transaction and signs it with their private RSA key.
+3. **Symmetric Key Encryption**: The transaction is encrypted using an AES symmetric key.
+4. **Key Exchange**: Offerer encrypts the AES key with Answerer's public RSA key and sends the encrypted data.
+5. **Decryption and Verification**: Answerer decrypts the AES key, decrypts the transaction, and verifies Offerer's signature.
+6. **Hash Linkage**: Answerer calculates the hash for the transaction, linking it to the last stored transaction for integrity.
+7. **Database Storage**: The transaction is saved in the SQLite database with cryptographic integrity checks.
+
+### Sequence Diagram
+The sequence diagram below outlines the steps involved in the transaction exchange between Offerer and Answerer.
+
+```mermaid
+sequenceDiagram
+    participant Offerer
+    participant Answerer
+    participant Ledger
+
+    Offerer->>Offerer: Generate RSA key pair (private/public)
+    Offerer->>Offerer: Save keys to PEM files
+    Offerer->>Answerer: Share public key
+    Answerer->>Answerer: Generate RSA key pair (private/public)
+    Answerer->>Answerer: Save keys to PEM files
+    Answerer->>Offerer: Share public key
+    
+    Offerer->>Offerer: Read own private key and Answerer's public key
+    Offerer->>Offerer: Create transaction
+    Offerer->>Offerer: Sign transaction with private key
+    Offerer->>Offerer: Serialize transaction
+    Offerer->>Offerer: Generate symmetric key
+    Offerer->>Offerer: Encrypt serialized transaction with symmetric key
+    Offerer->>Offerer: Encrypt symmetric key with Answerer's public key
+    Offerer->>Answerer: Send encrypted transaction data and encrypted symmetric key
+    
+    Answerer->>Answerer: Read own private key and Offerer's public key
+    Answerer->>Answerer: Decrypt symmetric key with own private key
+    Answerer->>Answerer: Decrypt transaction data with symmetric key
+    Answerer->>Answerer: Deserialize transaction
+    Answerer->>Answerer: Verify transaction signature using Offerer's public key
+    
+    Answerer->>Ledger: Retrieve previous transaction hash as prev_hash
+    Ledger-->>Answerer: Return prev_hash
+    Answerer->>Answerer: Set prev_hash in transaction
+    Answerer->>Answerer: Calculate current hash with updated transaction
+    Answerer->>Ledger: Save transaction to SQLite database
+```
+# change-ledger
 
 ### 1. Rustup 설치 파일 다운로드 및 실행
 
