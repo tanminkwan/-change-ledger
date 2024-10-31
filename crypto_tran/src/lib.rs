@@ -11,9 +11,8 @@ use dotenvy::dotenv;
 use std::env;
 use self::schema::transactions;
 use self::schema::transactions::dsl::*;
-use rsa::{RsaPrivateKey, RsaPublicKey};
+use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15, Pkcs1v15Encrypt};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
-use rsa::pkcs1v15;
 use rand::{RngCore, rngs::OsRng};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -29,6 +28,30 @@ use base64;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce}; // AES-GCM 구조체 및 타입
 use aes_gcm::aead::Aead;
 //use cipher::{KeyIvInit, StreamCipher, generic_array::GenericArray};
+
+pub fn encrypt_symmetric_key(
+    symmetric_key: &[u8],
+    public_key: &RsaPublicKey,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut rng = rand::thread_rng();
+    let encrypted_key = public_key.encrypt(
+        &mut rng,
+        Pkcs1v15Encrypt,
+        symmetric_key,
+    )?;
+    Ok(encrypted_key)
+}
+
+pub fn decrypt_symmetric_key(
+    encrypted_key: &[u8],
+    private_key: &RsaPrivateKey,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let decrypted_key = private_key.decrypt(
+        Pkcs1v15Encrypt,
+        encrypted_key,
+    )?;
+    Ok(decrypted_key)
+}
 
 /// RSA 키 쌍을 생성하는 함수.
 pub fn generate_rsa_key_pair() -> Result<(RsaPrivateKey, RsaPublicKey), Box<dyn std::error::Error>> {
