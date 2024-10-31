@@ -29,7 +29,7 @@ The sequence diagram below outlines the steps involved in the transaction exchan
 sequenceDiagram
     participant Offerer
     participant Answerer
-    participant Database
+    participant Ledger
 
     Offerer->>Offerer: Generate RSA key pair (private/public)
     Offerer->>Offerer: Save keys to PEM files
@@ -53,11 +53,11 @@ sequenceDiagram
     Answerer->>Answerer: Deserialize transaction
     Answerer->>Answerer: Verify transaction signature using Offerer's public key
     
-    Answerer->>Database: Retrieve previous transaction hash as prev_hash
-    Database-->>Answerer: Return prev_hash
+    Answerer->>Ledger: Retrieve previous transaction hash as prev_hash
+    Ledger-->>Answerer: Return prev_hash
     Answerer->>Answerer: Set prev_hash in transaction
     Answerer->>Answerer: Calculate current hash with updated transaction
-    Answerer->>Database: Save transaction to SQLite database
+    Answerer->>Ledger: Save transaction to SQLite database
 ```
 # change-ledger
 
