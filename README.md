@@ -25,7 +25,8 @@ The process involves two primary participants, Offerer and Answerer, who securel
 ### Sequence Diagram
 The sequence diagram below outlines the steps involved in the transaction exchange between Offerer and Answerer.
 
-```mermaidsequenceDiagram
+```mermaid
+sequenceDiagram
     participant Offerer
     participant Answerer
     participant Database
