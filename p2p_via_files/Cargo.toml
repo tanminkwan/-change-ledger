@@ -1,0 +1,21 @@
+[package]
+name = "p2p_via_files"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "peer1"
+path = "src/peer1.rs"
+
+[[bin]]
+name = "peer2"
+path = "src/peer2.rs"
+
+[lib]
+name = "webrtc_rust"
+path = "src/lib.rs"
+
+[dependencies]
+webrtc = "0.11.0"
+tokio = { version = "1.0", features = ["full"] }
+serde_json = "1.0"
