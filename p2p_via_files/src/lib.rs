@@ -30,22 +30,24 @@ pub async fn create_peer_connection(name: &str, is_initiator: bool)
         let _ = dc_tx.send(dc).await;
     } else {
         let dc_tx = dc_tx.clone();
-        let name_clone = name.clone(); // 클로저에서 사용하기 위해 이름 복사본을 만듦
+        //let name_clone = name.clone(); // 클로저에서 사용하기 위해 이름 복사본을 만듦
         peer_connection.on_data_channel(Box::new(move |dc: Arc<RTCDataChannel>| {
-            setup_data_channel(dc.clone(), &name_clone);
+            //setup_data_channel(dc.clone(), &name_clone);
+            setup_data_channel(dc.clone(), &name);
             let _ = dc_tx.try_send(dc);
             Box::pin(async {})
         }));
     }
     
-    println!("{} created", name);
+    //println!("{} created", &name);
     Ok((peer_connection, dc_rx))
 }
 
 pub fn setup_data_channel(dc: Arc<RTCDataChannel>, name: &str) {
-    let name = String::from(name);
-    
+
+    let name = String::from(name);    
     let name_clone = name.clone();
+
     dc.on_open(Box::new(move || {
         println!("{}: Data channel opened", name_clone);
         Box::pin(async {})
