@@ -150,6 +150,34 @@ class _MyAppState extends State<MyApp> {
                       },
                       child: const Text("Test Encryption/Decryption"),
                     ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          final privateKey = _retrievedKeys!['privateKey'] ?? '';
+                          final publicKey = _retrievedKeys!['publicKey'] ?? '';
+                          const message = "Sample Transaction";
+
+                          // Sign the message
+                          final signature = await sign(origText: message, privateKey: privateKey);
+
+                          // Verify the signature
+                          final isValid = await verifySignature(
+                            signature: signature,
+                            origText: message,
+                            publicKeyPem: publicKey,
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Signature Valid: $isValid')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
+                      },
+                      child: const Text("Sign and Verify Transaction"),
+                    ),
 
                     if (_retrievedKeys != null)
                       Column(

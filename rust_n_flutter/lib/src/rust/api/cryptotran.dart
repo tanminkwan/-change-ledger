@@ -19,6 +19,10 @@ Future<(Uint8List,Uint8List)> encrypt({required String plainText , required List
 
 Future<String> decrypt({required List<int> encryptedData , required List<int> key , required List<int> iv }) => RustLib.instance.api.crateApiCryptotranDecrypt(encryptedData: encryptedData, key: key, iv: iv);
 
+Future<String> sign({required String origText , required String privateKey }) => RustLib.instance.api.crateApiCryptotranSign(origText: origText, privateKey: privateKey);
+
+Future<bool> verifySignature({required String signature , required String origText , required String publicKeyPem }) => RustLib.instance.api.crateApiCryptotranVerifySignature(signature: signature, origText: origText, publicKeyPem: publicKeyPem);
+
             class RsaKeyPair  {
                 final String privateKeyPem;
 final String publicKeyPem;

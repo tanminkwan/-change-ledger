@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use rsa::{pkcs1v15, RsaPrivateKey, RsaPublicKey};
-use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, DecodePrivateKey, DecodePublicKey};
 use sha2::{Sha256, Digest};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use aes_gcm::aead::{Aead, Error as AeadError};
@@ -92,8 +92,8 @@ pub fn decrypt(encrypted_data: Vec<u8>, key: Vec<u8>, iv: Vec<u8>) -> Result<Str
 
 // Sign a transaction using a private key
 #[frb]
-pub fn sign(orig_text: &str, private_key_pem: &str) -> Result<String, String> {
-    let private_key = RsaPrivateKey::from_pkcs8_pem(private_key_pem)
+pub fn sign(orig_text: &str, private_key: &str) -> Result<String, String> {
+    let private_key_pem = RsaPrivateKey::from_pkcs8_pem(private_key)
         .map_err(|e| e.to_string())?;
 
     let mut hasher = Sha256::new();
@@ -101,7 +101,7 @@ pub fn sign(orig_text: &str, private_key_pem: &str) -> Result<String, String> {
     let hashed = hasher.finalize();
 
     let padding = pkcs1v15::Pkcs1v15Sign::new::<Sha256>();
-    let signature = private_key
+    let signature = private_key_pem
         .sign(padding, &hashed)
         .map_err(|e| e.to_string())?;
 
