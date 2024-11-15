@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:rust_n_flutter/src/rust/api/cryptotran.dart';
 import 'package:rust_n_flutter/src/rust/frb_generated.dart';
-import 'package:rust_n_flutter/keymanager.dart';
+import 'keymanager.dart';
 import 'database_helper.dart';
+import 'rtc_network.dart';
 
 Future<void> main(List<String> args) async {
   String userId = args.isNotEmpty ? args[0] : 'default_user';
@@ -37,18 +38,36 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   List<Map<String, dynamic>> _data = [];
   late String _userId;
   RsaKeyPair? _rsaKeyPair;
   Map<String, String>? _retrievedKeys;
+  late RTCNetwork _rtcNetwork;
+
   final KeyManager keyManager = getKeyManager();
 
   @override
   void initState() {
+    
     super.initState();
+
     _userId = widget.userId; // 전달받은 userId 사용
     _fetchData();
+
+    _rtcNetwork = RTCNetwork();
+    _rtcNetwork.messages.listen((message) {
+      setState(() {
+        print("Received: $message");
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _rtcNetwork.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
