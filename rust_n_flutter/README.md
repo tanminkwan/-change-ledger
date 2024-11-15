@@ -17,3 +17,9 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Flutter Rust Bridge
 [online documentation](https://cjycode.com/flutter_rust_bridge/quickstart)
+
+# Run Application
+
+```bash
+flutter run --dart-entrypoint-args user_id
+```
