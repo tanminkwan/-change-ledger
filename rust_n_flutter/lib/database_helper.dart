@@ -2,14 +2,22 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._init();
+  static DatabaseHelper? _instance;
   static Database? _database;
+  final String dbName;
 
-  DatabaseHelper._init();
+  // private constructor
+  DatabaseHelper._({required this.dbName});
+
+  // factory constructor for instance creation
+  factory DatabaseHelper({required String dbName}) {
+    _instance ??= DatabaseHelper._(dbName: dbName);
+    return _instance!;
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('chained.db');
+    _database = await _initDB(dbName);
     return _database!;
   }
 
@@ -17,7 +25,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
   
-    print('Initializing database at $path'); // 로그 추가
+    print('Initializing database at $path');
 
     return await openDatabase(path, version: 1, onCreate: _createDB);
   }
@@ -40,7 +48,7 @@ class DatabaseHelper {
   }
 
   Future<void> insertData(String senderId, String recipientId, double amount) async {
-    final db = await instance.database;
+    final db = await database;
     final newTransaction = {
       'transaction_id': DateTime.now().millisecondsSinceEpoch.toString(),
       'sender_id': senderId,
@@ -55,12 +63,12 @@ class DatabaseHelper {
   }
 
   Future<List<Map<String, dynamic>>> fetchData() async {
-    final db = await instance.database;
+    final db = await database;
     return await db.query('transactions');
   }
 
   Future<void> updateData(int id, String recipientId, double amount) async {
-    final db = await instance.database;
+    final db = await database;
     await db.update(
       'transactions',
       {
@@ -77,7 +85,7 @@ class DatabaseHelper {
   }
 
   Future<void> deleteData(int id) async {
-    final db = await instance.database;
+    final db = await database;
     await db.delete(
       'transactions',
       where: 'id = ?',

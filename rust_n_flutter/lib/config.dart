@@ -11,6 +11,7 @@ class Config {
     try {
       // Construct the file path based on the name
       final fileName = 'assets/config/config-$configName.json';
+      print("Config Filename : $fileName");
       final configData = await rootBundle.loadString(fileName);
       final config = json.decode(configData);
 

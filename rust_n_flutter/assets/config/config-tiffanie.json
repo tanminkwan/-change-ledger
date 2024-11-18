@@ -1,0 +1,4 @@
+{
+    "dhtServers": ["ws://localhost:3000"],
+    "dbConnection": "chained-tiffanie.db"
+}

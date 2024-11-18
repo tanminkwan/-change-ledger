@@ -5,14 +5,31 @@ import 'package:rust_n_flutter/src/rust/api/cryptotran.dart';
 import 'package:rust_n_flutter/src/rust/frb_generated.dart';
 import 'keymanager.dart';
 import 'database_helper.dart';
+import 'config.dart';
+
 //import 'rtc_network.dart';
 
 Future<void> main(List<String> args) async {
   String userId = args.isNotEmpty ? args[0] : 'default_user';
+
+  // Binding 초기화
+  WidgetsFlutterBinding.ensureInitialized();
+  await Config.loadConfig(userId);
+  
+  // Print the loaded configuration
+  //log('Loaded Configuration:');
+  //log('DHT Servers: ${Config.dhtServers}');
+  //log('Database Connection: ${Config.dbConnection}');
+
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+
+  // 데이터베이스 초기화
+  //DatabaseHelper.getInstance('chained-$userId.db');
+
   await RustLib.init();
   runApp(MyApp(userId: userId));
+
 }
 
 class MyApp extends StatelessWidget {
@@ -39,7 +56,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final DatabaseHelper _dbHelper = DatabaseHelper(dbName: Config.dbConnection);
+
   List<Map<String, dynamic>> _data = [];
   late String _userId;
   RsaKeyPair? _rsaKeyPair;
