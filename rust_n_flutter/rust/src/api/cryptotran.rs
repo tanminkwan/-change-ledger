@@ -125,3 +125,107 @@ pub fn verify_signature(signature: &str, orig_text: &str, public_key_pem: &str) 
         .map(|_| true)
         .map_err(|e| e.to_string())
 }
+
+#[derive(Serialize, Deserialize)]
+struct PayloadAndSignature {
+    payload: String,
+    signature: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EncryptedMessage {
+    pub encrypted_payload: String, // Base64로 인코딩된 암호화된 JSON 문자열
+    pub iv: String,                // Base64로 인코딩된 초기화 벡터
+    pub symmetric_key: String,     // Base64로 인코딩된 RSA로 암호화된 대칭키
+}
+
+#[frb]
+pub fn create_secure_payload(
+    text: String,
+    private_key_pem: String,
+    public_key_pem: String
+) -> Result<EncryptedMessage, String> {
+    // Step 1: Sign the text with the private key using the existing sign function
+    let signature_base64 = sign(&text, &private_key_pem)?;
+
+    // Step 2: Create and serialize the JSON object
+    let payload_and_signature = PayloadAndSignature {
+        payload: text,
+        signature: signature_base64,
+    };
+
+    let serialized = serde_json::to_string(&payload_and_signature)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+
+    // Step 3: Generate a symmetric key
+    let symmetric_key = generate_symmetric_key();
+
+    // Step 4: Encrypt the JSON string with the symmetric key
+    let (encrypted_payload, iv) = encrypt(&serialized, symmetric_key.clone())
+        .map_err(|e| format!("Failed to encrypt payload: {}", e))?;
+
+    // Step 5: Encrypt the symmetric key with the recipient's public key
+    let public_key = RsaPublicKey::from_public_key_pem(&public_key_pem)
+        .map_err(|e| format!("Failed to parse public key: {}", e))?;
+
+    let encrypted_symmetric_key = public_key
+        .encrypt(&mut OsRng, pkcs1v15::Pkcs1v15Encrypt, &symmetric_key)
+        .map_err(|e| format!("Failed to encrypt symmetric key: {}", e))?;
+
+    // Step 6: Encode all binary data to Base64
+    let encrypted_payload_base64 = base64::encode(encrypted_payload);
+    let iv_base64 = base64::encode(iv);
+    let symmetric_key_base64 = base64::encode(encrypted_symmetric_key);
+
+    // Step 7: Return the final structure
+    Ok(EncryptedMessage {
+        encrypted_payload: encrypted_payload_base64, // Base64로 인코딩된 암호화된 데이터
+        iv: iv_base64,                               // Base64로 인코딩된 IV
+        symmetric_key: symmetric_key_base64,         // Base64로 인코딩된 대칭키
+    })
+
+}
+
+#[frb]
+pub fn verify_and_decrypt_payload(
+    encrypted_message: EncryptedMessage,
+    recipient_private_key_pem: String,
+    sender_public_key_pem: String,
+) -> Result<String, String> {
+    // Step 1: Base64 디코딩
+    let encrypted_payload = base64::decode(&encrypted_message.encrypted_payload)
+        .map_err(|e| format!("Failed to decode encrypted payload: {}", e))?;
+    let iv = base64::decode(&encrypted_message.iv)
+        .map_err(|e| format!("Failed to decode IV: {}", e))?;
+    let encrypted_symmetric_key = base64::decode(&encrypted_message.symmetric_key)
+        .map_err(|e| format!("Failed to decode symmetric key: {}", e))?;
+
+    // Step 2: 수신자의 비밀키로 대칭키 복호화
+    let recipient_private_key = RsaPrivateKey::from_pkcs8_pem(&recipient_private_key_pem)
+        .map_err(|e| format!("Failed to parse recipient private key: {}", e))?;
+    let symmetric_key = recipient_private_key
+        .decrypt(pkcs1v15::Pkcs1v15Encrypt, &encrypted_symmetric_key)
+        .map_err(|e| format!("Failed to decrypt symmetric key: {}", e))?;
+
+    // Step 3: 대칭키를 사용해 암호화된 payload 복호화
+    let decrypted_payload = decrypt(encrypted_payload, symmetric_key, iv)
+        .map_err(|e| format!("Failed to decrypt payload: {}", e))?;
+
+    // Step 4: 복호화된 JSON에서 payload와 signature 추출
+    let payload_and_signature: PayloadAndSignature = serde_json::from_str(&decrypted_payload)
+        .map_err(|e| format!("Failed to parse decrypted JSON: {}", e))?;
+
+    let payload = payload_and_signature.payload;
+    let signature = payload_and_signature.signature;
+
+    // Step 5: 보낸 사람의 공개키로 서명 검증
+    let is_valid = verify_signature(&signature, &payload, &sender_public_key_pem)
+        .map_err(|e| format!("Signature verification failed: {}", e))?;
+
+    if !is_valid {
+        return Err("Signature is invalid.".to_string());
+    }
+
+    // Step 6: 복호화된 payload 반환
+    Ok(payload)
+}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:rust_n_flutter/src/rust/api/cryptotran.dart';
 import 'package:rust_n_flutter/src/rust/frb_generated.dart';
+import 'dart:convert';
 import 'keymanager.dart';
 import 'database_helper.dart';
 import 'config.dart';
@@ -58,7 +59,7 @@ class _HomePageState extends State<HomePage> {
 
   final DatabaseHelper _dbHelper = DatabaseHelper(dbName: Config.dbConnection);
 
-  List<Map<String, dynamic>> _data = [];
+  Map<String, dynamic> _data = {};
   late String _userId;
   RsaKeyPair? _rsaKeyPair;
   Map<String, String>? _retrievedKeys;
@@ -72,7 +73,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
 
     _userId = widget.userId; // 전달받은 userId 사용
-    _fetchData();
+    //_fetchData();
 
     /*
     _rtcNetwork = RTCNetwork(userId: _userId);
@@ -90,26 +91,77 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
-    final data = await _dbHelper.fetchData();
+  Future<void> _fetchData(String transactionId) async {
+    final data = await _dbHelper.fetchData(transactionId);
     setState(() {
-      _data = data;
+      _data = data ?? {}; // null일 경우 빈 맵으로 대체
     });
   }
 
-  Future<void> _insertData(String recipientId, double amount) async {
-    await _dbHelper.insertData(_userId, recipientId, amount);
-    _fetchData();
+  Future<EncryptedMessage> _encrypData(String recipientId, double amount) async {
+    final privateKey = _retrievedKeys!['privateKey'] ?? '';
+    final recipientkey = await keyManager.readKey("stamp_$recipientId");
+
+    final transactionId = await _dbHelper.insertData(_userId, recipientId, amount);
+    await _fetchData(transactionId);
+
+    // 1. _data를 JSON으로 직렬화
+    final text = jsonEncode({
+      "transaction_id": _data["transaction_id"],
+      "sender_id": _data["sender_id"],
+      "recipient_id": _data["recipient_id"],
+      "amount": _data["amount"],
+      "timestamp": _data["timestamp"],
+    });
+
+    print("text 1 : $text");
+    print("transaction_id 1 : $transactionId");
+    
+    // 2. Rust 함수 호출
+    final encryptedMessage = await createSecurePayload(
+      text: text,
+      privateKeyPem: privateKey,
+      publicKeyPem: recipientkey,
+    );
+    
+    // 3. 결과 처리
+    print("Encrypted Payload: ${encryptedMessage.encryptedPayload}");
+    print("IV: ${encryptedMessage.iv}");
+    print("Encrypted Symmetric Key: ${encryptedMessage.symmetricKey}");
+
+    // 3. EncryptedMessage 반환
+    return encryptedMessage;
+
+  }
+
+  Future<Map<String, dynamic>> _decryptData(
+      EncryptedMessage encryptedMessage,
+      String senderId,
+  ) async {
+
+    final privateKey = _retrievedKeys!['privateKey'] ?? '';
+    final senderKey = await keyManager.readKey("stamp_$senderId");
+
+    // Rust 함수 호출
+    final decryptedText = await verifyAndDecryptPayload(
+      encryptedMessage: encryptedMessage,
+      recipientPrivateKeyPem: privateKey,
+      senderPublicKeyPem: senderKey,
+    );
+
+    // JSON 디시리얼라이즈
+    final Map<String, dynamic> deserializedData = jsonDecode(decryptedText);
+
+    return deserializedData;
+    
   }
 
   Future<void> _updateData(int id, String recipientId, double amount) async {
     await _dbHelper.updateData(id, recipientId, amount);
-    _fetchData();
   }
 
   Future<void> _deleteData(int id) async {
     await _dbHelper.deleteData(id);
-    _fetchData();
   }
 
   @override
@@ -167,14 +219,19 @@ class _HomePageState extends State<HomePage> {
                   ),
                   SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       final recipientId = recipientController.text;
                       final amount = double.tryParse(amountController.text) ?? 0.0;
                       if (recipientId.isNotEmpty && amount > 0) {
-                        _insertData(recipientId, amount);
+
+                        final encryptedMessage = await _encrypData(recipientId, amount);
+                        print("Encrypted Payload: ${encryptedMessage.encryptedPayload}");
+                        print("IV: ${encryptedMessage.iv}");
+                        print("Encrypted Symmetric Key: ${encryptedMessage.symmetricKey}");
+
                       }
                     },
-                    child: Text('Add Transaction'),
+                    child: Text('Send Transaction'),
                   ),
                   Divider(height: 30, thickness: 2),
                 ],
@@ -221,9 +278,14 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () async {
                       if (_rsaKeyPair != null) {
                         try {
-                          await keyManager.saveKeys(
-                            "rsaKey_$_userId",
+                          await keyManager.saveKeyPair(
+                            "sealstamp_$_userId",
                             _rsaKeyPair!.privateKeyPem,
+                            _rsaKeyPair!.publicKeyPem,
+                          );
+
+                          await keyManager.saveKey(
+                            "stamp_$_userId",
                             _rsaKeyPair!.publicKeyPem,
                           );
 
@@ -247,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                   ElevatedButton(
                     onPressed: () async {
                       try {
-                        final keys = await keyManager.readKeys("rsaKey_$_userId");
+                        final keys = await keyManager.readKeyPair("sealstamp_$_userId");
 
                         setState(() {
                           _retrievedKeys = keys;

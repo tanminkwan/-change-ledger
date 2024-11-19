@@ -9,9 +9,9 @@ import 'dart:developer';
 const platform = LocalPlatform();
 
 Future<void> saveToCredentialManager(
-    String keyName, String privateKey, String publicKey) async {
+    String keyName, String key) async {
   // 데이터 준비
-  final data = utf8.encode('$privateKey\n|\n$publicKey');
+  final data = utf8.encode(key);
 
   // CREDENTIAL 구조체 생성
   final credential = calloc<CREDENTIAL>();
@@ -42,7 +42,7 @@ Future<void> saveToCredentialManager(
 
 }
 
-Future<Map<String, String>> readFromCredentialManager(String keyName) async {
+Future<String> readFromCredentialManager(String keyName) async {
   final pCredential = calloc<Pointer<CREDENTIAL>>();
 
   try {
@@ -58,49 +58,84 @@ Future<Map<String, String>> readFromCredentialManager(String keyName) async {
     // 데이터 추출
     final blob = credential.CredentialBlob.asTypedList(credential.CredentialBlobSize);
     final decodedData = String.fromCharCodes(blob);
-    final parts = decodedData.split('\n|\n');
 
-    return {
-      'privateKey': parts.isNotEmpty ? parts[0] : '',
-      'publicKey': parts.length > 1 ? parts[1] : '',
-    };
+    return decodedData;
+
   } finally {
     // 메모리 해제
     CredFree(pCredential.value);
     calloc.free(pCredential);
   }
+
+}
+
+Future<Map<String, String>> readRsaKeypair(String keyName) async {
+  final key = await readFromCredentialManager(keyName);
+  final parts = key.split('\n|\n');
+
+    return {
+      'privateKey': parts.isNotEmpty ? parts[0] : '',
+      'publicKey': parts.length > 1 ? parts[1] : '',
+    };
+
 }
 
 abstract class KeyManager {
-  Future<void> saveKeys(String keyName, String privateKey, String publicKey);
-  Future<Map<String, String>> readKeys(String keyName);
+  Future<void> saveKeyPair(String keyName, String privateKey, String publicKey);
+  Future<Map<String, String>> readKeyPair(String keyName);
+  Future<void> saveKey(String keyName, String Key);
+  Future<String> readKey(String keyName);
 }
 
 // Extend the WindowsKeyManager to include the readKeys method
 class WindowsKeyManager implements KeyManager {
   @override
-  Future<void> saveKeys(String keyName, String privateKey, String publicKey) async {
-    await saveToCredentialManager(keyName, privateKey, publicKey);
+  Future<void> saveKeyPair(String keyName, String privateKey, String publicKey) async {
+    await saveToCredentialManager(keyName, '$privateKey\n|\n$publicKey');
   }
 
   @override
-  Future<Map<String, String>> readKeys(String keyName) async {
+  Future<Map<String, String>> readKeyPair(String keyName) async {
+    return await readRsaKeypair(keyName);
+  }
+
+  @override
+  Future<void> saveKey(String keyName, String key) async {
+    await saveToCredentialManager(keyName, key);
+  }
+
+  @override
+  Future<String> readKey(String keyName) async {
     return await readFromCredentialManager(keyName);
   }
+
 }
 
 // Ensure AndroidKeyManager implements readKeys
 class AndroidKeyManager implements KeyManager {
   @override
-  Future<void> saveKeys(String keyName, String privateKey, String publicKey) async {
+  Future<void> saveKeyPair(String keyName, String privateKey, String publicKey) async {
     // await saveToAndroidKeystore(privateKey, publicKey);
   }
 
   @override
-  Future<Map<String, String>> readKeys(String keyName) async {
+  Future<Map<String, String>> readKeyPair(String keyName) async {
     // Implement reading keys from Android Keystore
     return {'privateKey': '', 'publicKey': ''};
   }
+
+  @override
+  Future<void> saveKey(String keyName, String key) async {
+    // await saveToAndroidKeystore(yey);
+  }
+
+  @override
+  Future<String> readKey(String keyName) async {
+    // Implement reading keys from Android Keystore
+    return '';
+  }
+
+
 }
 
 KeyManager getKeyManager() {

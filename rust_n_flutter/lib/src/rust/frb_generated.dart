@@ -67,7 +67,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
                   String get codegenVersion => '2.6.0';
 
                   @override
-                  int get rustContentHash => 1597962205;
+                  int get rustContentHash => -1487028129;
 
                   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
                     stem: 'rust_lib_rust_n_flutter',
@@ -78,7 +78,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
                 
 
                 abstract class RustLibApi extends BaseApi {
-                  Future<String> crateApiCryptotranDecrypt({required List<int> encryptedData , required List<int> key , required List<int> iv });
+                  Future<EncryptedMessage> crateApiCryptotranCreateSecurePayload({required String text , required String privateKeyPem , required String publicKeyPem });
+
+Future<String> crateApiCryptotranDecrypt({required List<int> encryptedData , required List<int> key , required List<int> iv });
 
 Future<(Uint8List,Uint8List)> crateApiCryptotranEncrypt({required String plainText , required List<int> key });
 
@@ -91,6 +93,8 @@ String crateApiSimpleGreet({required String name });
 Future<void> crateApiSimpleInitApp();
 
 Future<String> crateApiCryptotranSign({required String origText , required String privateKey });
+
+Future<String> crateApiCryptotranVerifyAndDecryptPayload({required EncryptedMessage encryptedMessage , required String recipientPrivateKeyPem , required String senderPublicKeyPem });
 
 Future<bool> crateApiCryptotranVerifySignature({required String signature , required String origText , required String publicKeyPem });
 
@@ -108,13 +112,40 @@ Future<void> crateApiCryptotranWritePemFile({required String path , required Str
                     required super.portManager,
                   });
 
-                  @override Future<String> crateApiCryptotranDecrypt({required List<int> encryptedData , required List<int> key , required List<int> iv })  { return handler.executeNormal(NormalTask(
+                  @override Future<EncryptedMessage> crateApiCryptotranCreateSecurePayload({required String text , required String privateKeyPem , required String publicKeyPem })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(text, serializer);
+sse_encode_String(privateKeyPem, serializer);
+sse_encode_String(publicKeyPem, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_encrypted_message,
+          decodeErrorData: sse_decode_String,
+        )
+        ,
+            constMeta: kCrateApiCryptotranCreateSecurePayloadConstMeta,
+            argValues: [text, privateKeyPem, publicKeyPem],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiCryptotranCreateSecurePayloadConstMeta => const TaskConstMeta(
+            debugName: "create_secure_payload",
+            argNames: ["text", "privateKeyPem", "publicKeyPem"],
+        );
+        
+
+@override Future<String> crateApiCryptotranDecrypt({required List<int> encryptedData , required List<int> key , required List<int> iv })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(encryptedData, serializer);
 sse_encode_list_prim_u_8_loose(key, serializer);
 sse_encode_list_prim_u_8_loose(iv, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2, port: port_);
             
             },
             codec: 
@@ -140,7 +171,7 @@ sse_encode_list_prim_u_8_loose(iv, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(plainText, serializer);
 sse_encode_list_prim_u_8_loose(key, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3, port: port_);
             
             },
             codec: 
@@ -165,7 +196,7 @@ sse_encode_list_prim_u_8_loose(key, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4, port: port_);
             
             },
             codec: 
@@ -190,7 +221,7 @@ sse_encode_list_prim_u_8_loose(key, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5, port: port_);
             
             },
             codec: 
@@ -215,7 +246,7 @@ sse_encode_list_prim_u_8_loose(key, serializer);
             callFfi: () {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(name, serializer);
-            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
             
             },
             codec: 
@@ -240,7 +271,7 @@ sse_encode_list_prim_u_8_loose(key, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
             
             },
             codec: 
@@ -266,7 +297,7 @@ sse_encode_list_prim_u_8_loose(key, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(origText, serializer);
 sse_encode_String(privateKey, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
             
             },
             codec: 
@@ -287,13 +318,40 @@ sse_encode_String(privateKey, serializer);
         );
         
 
+@override Future<String> crateApiCryptotranVerifyAndDecryptPayload({required EncryptedMessage encryptedMessage , required String recipientPrivateKeyPem , required String senderPublicKeyPem })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_encrypted_message(encryptedMessage, serializer);
+sse_encode_String(recipientPrivateKeyPem, serializer);
+sse_encode_String(senderPublicKeyPem, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        )
+        ,
+            constMeta: kCrateApiCryptotranVerifyAndDecryptPayloadConstMeta,
+            argValues: [encryptedMessage, recipientPrivateKeyPem, senderPublicKeyPem],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiCryptotranVerifyAndDecryptPayloadConstMeta => const TaskConstMeta(
+            debugName: "verify_and_decrypt_payload",
+            argNames: ["encryptedMessage", "recipientPrivateKeyPem", "senderPublicKeyPem"],
+        );
+        
+
 @override Future<bool> crateApiCryptotranVerifySignature({required String signature , required String origText , required String publicKeyPem })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(signature, serializer);
 sse_encode_String(origText, serializer);
 sse_encode_String(publicKeyPem, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
             
             },
             codec: 
@@ -319,7 +377,7 @@ sse_encode_String(publicKeyPem, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(path, serializer);
 sse_encode_String(pem, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
             
             },
             codec: 
@@ -347,6 +405,16 @@ return raw as String; }
 
 @protected bool dco_decode_bool(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as bool; }
+
+@protected EncryptedMessage dco_decode_box_autoadd_encrypted_message(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_encrypted_message(raw); }
+
+@protected EncryptedMessage dco_decode_encrypted_message(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+                return EncryptedMessage(encryptedPayload: dco_decode_String(arr[0]),
+iv: dco_decode_String(arr[1]),
+symmetricKey: dco_decode_String(arr[2]),); }
 
 @protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as List<int>; }
@@ -380,6 +448,15 @@ var inner = sse_decode_list_prim_u_8_strict(deserializer);
 @protected bool sse_decode_bool(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 return deserializer.buffer.getUint8() != 0; }
 
+@protected EncryptedMessage sse_decode_box_autoadd_encrypted_message(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_encrypted_message(deserializer)); }
+
+@protected EncryptedMessage sse_decode_encrypted_message(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_encryptedPayload = sse_decode_String(deserializer);
+var var_iv = sse_decode_String(deserializer);
+var var_symmetricKey = sse_decode_String(deserializer);
+return EncryptedMessage(encryptedPayload: var_encryptedPayload, iv: var_iv, symmetricKey: var_symmetricKey); }
+
 @protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var len_ = sse_decode_i_32(deserializer);
                 return deserializer.buffer.getUint8List(len_); }
@@ -412,6 +489,15 @@ sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
 
 @protected void sse_encode_bool(bool self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 serializer.buffer.putUint8(self ? 1 : 0); }
+
+@protected void sse_encode_box_autoadd_encrypted_message(EncryptedMessage self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_encrypted_message(self, serializer); }
+
+@protected void sse_encode_encrypted_message(EncryptedMessage self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.encryptedPayload, serializer);
+sse_encode_String(self.iv, serializer);
+sse_encode_String(self.symmetricKey, serializer);
+ }
 
 @protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.length, serializer);

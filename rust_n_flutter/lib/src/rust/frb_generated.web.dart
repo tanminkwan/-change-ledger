@@ -31,6 +31,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 @protected bool dco_decode_bool(dynamic raw);
 
+@protected EncryptedMessage dco_decode_box_autoadd_encrypted_message(dynamic raw);
+
+@protected EncryptedMessage dco_decode_encrypted_message(dynamic raw);
+
 @protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
 @protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -46,6 +50,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 @protected String sse_decode_String(SseDeserializer deserializer);
 
 @protected bool sse_decode_bool(SseDeserializer deserializer);
+
+@protected EncryptedMessage sse_decode_box_autoadd_encrypted_message(SseDeserializer deserializer);
+
+@protected EncryptedMessage sse_decode_encrypted_message(SseDeserializer deserializer);
 
 @protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
 
@@ -64,6 +72,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 @protected void sse_encode_String(String self, SseSerializer serializer);
 
 @protected void sse_encode_bool(bool self, SseSerializer serializer);
+
+@protected void sse_encode_box_autoadd_encrypted_message(EncryptedMessage self, SseSerializer serializer);
+
+@protected void sse_encode_encrypted_message(EncryptedMessage self, SseSerializer serializer);
 
 @protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 

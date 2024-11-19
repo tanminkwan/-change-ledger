@@ -1,5 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:math';
+
+Future<String> generate16CharUuid() async {
+  final random = Random();
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return List.generate(16, (index) => chars[random.nextInt(chars.length)]).join();
+}
 
 class DatabaseHelper {
   static DatabaseHelper? _instance;
@@ -47,10 +54,14 @@ class DatabaseHelper {
     );
   }
 
-  Future<void> insertData(String senderId, String recipientId, double amount) async {
+  Future<String> insertData(String senderId, String recipientId, double amount) async {
     final db = await database;
+
+    // 16자리 UUID 생성
+    final transactionId = await generate16CharUuid();
+
     final newTransaction = {
-      'transaction_id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'transaction_id': transactionId,
       'sender_id': senderId,
       'recipient_id': recipientId,
       'amount': amount,
@@ -59,12 +70,26 @@ class DatabaseHelper {
       'prev_hash': null,
       'current_hash': null,
     };
+
     await db.insert('transactions', newTransaction, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    // transaction_id 반환
+    return transactionId;
   }
 
-  Future<List<Map<String, dynamic>>> fetchData() async {
+  Future<Map<String, dynamic>?> fetchData(String transactionId) async {
     final db = await database;
-    return await db.query('transactions');
+
+    // transaction_id를 조건으로 첫 번째 행 조회
+    final result = await db.query(
+      'transactions',
+      where: 'transaction_id = ?',
+      whereArgs: [transactionId],
+      limit: 1, // 첫 번째 행만 조회
+    );
+
+    // 첫 번째 행 반환 (없으면 null 반환)
+    return result.isNotEmpty ? result.first : null;
   }
 
   Future<void> updateData(int id, String recipientId, double amount) async {

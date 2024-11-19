@@ -1,21 +1,19 @@
-// rtc_network.dart
+// signaling.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/io.dart';
 
-class RTCNetwork {
+class Signaling {
   RTCPeerConnection? _peerConnection;
   RTCDataChannel? _dataChannel;
-  final _channel = IOWebSocketChannel.connect('ws://localhost:3000');
-  final String userId;
+  late IOWebSocketChannel _channel;
+  Function(String message)? onMessageReceived;
+  Function()? onLocalCandidate;
 
-  RTCNetwork({required this.userId}) {
+  Signaling(String webSocketUrl) {
+    _channel = IOWebSocketChannel.connect(webSocketUrl);
     _connectSignaling();
-  }
-
-  void dispose() {
-    _channel.sink.close();
   }
 
   Future<void> _connectSignaling() async {
@@ -23,7 +21,7 @@ class RTCNetwork {
       final data = jsonDecode(message);
 
       if (data['type'] == 'offer') {
-        await createAnswer(data['sdp']);
+        await _createAnswer(data['sdp']);
       } else if (data['type'] == 'answer') {
         await _peerConnection?.setRemoteDescription(
           RTCSessionDescription(data['sdp'], 'answer'),
@@ -45,21 +43,22 @@ class RTCNetwork {
       'chat',
       RTCDataChannelInit(),
     );
+    _setupDataChannel();
 
     final offer = await _peerConnection!.createOffer();
     await _peerConnection!.setLocalDescription(offer);
 
     _channel.sink.add(jsonEncode({
       'type': 'offer',
-      'user_id': userId,
       'sdp': offer.sdp,
     }));
   }
 
-  Future<void> createAnswer(String sdp) async {
+  Future<void> _createAnswer(String sdp) async {
     _peerConnection = await _createPeerConnection();
     _peerConnection!.onDataChannel = (RTCDataChannel channel) {
       _dataChannel = channel;
+      _setupDataChannel();
     };
 
     await _peerConnection!.setRemoteDescription(
@@ -70,16 +69,16 @@ class RTCNetwork {
     await _peerConnection!.setLocalDescription(answer);
 
     _channel.sink.add(jsonEncode({
-      'type': 'answer_$userId',
+      'type': 'answer',
       'sdp': answer.sdp,
     }));
   }
 
   Future<RTCPeerConnection> _createPeerConnection() async {
     final Map<String, dynamic> config = {
-      //'iceServers': [
-      //  {'urls': 'stun:stun.l.google.com:19302'}
-      //]
+      // 'iceServers': [
+      //   {'urls': 'stun:stun.l.google.com:19302'}
+      // ]
     };
 
     final pc = await createPeerConnection(config);
@@ -97,15 +96,21 @@ class RTCNetwork {
     return pc;
   }
 
+  void _setupDataChannel() {
+    _dataChannel?.onMessage = (RTCDataChannelMessage message) {
+      if (onMessageReceived != null) {
+        onMessageReceived!(message.text);
+      }
+    };
+  }
+
   void sendMessage(String message) {
     if (message.isNotEmpty && _dataChannel != null) {
       _dataChannel!.send(RTCDataChannelMessage(message));
     }
   }
 
-  Stream<String> get messages => _channel.stream
-      .map((message) => jsonDecode(message))
-      .where((data) => data['type'] == 'message')
-      .map((data) => data['text'] as String);
-
+  void dispose() {
+    _channel.sink.close();
+  }
 }

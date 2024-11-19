@@ -7,7 +7,8 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 
-            
+            // These types are ignored because they are not used by any `pub` functions: `PayloadAndSignature`
+
 
             Future<RsaKeyPair> generateRsaKeyPair() => RustLib.instance.api.crateApiCryptotranGenerateRsaKeyPair();
 
@@ -23,7 +24,36 @@ Future<String> sign({required String origText , required String privateKey }) =>
 
 Future<bool> verifySignature({required String signature , required String origText , required String publicKeyPem }) => RustLib.instance.api.crateApiCryptotranVerifySignature(signature: signature, origText: origText, publicKeyPem: publicKeyPem);
 
-            class RsaKeyPair  {
+Future<EncryptedMessage> createSecurePayload({required String text , required String privateKeyPem , required String publicKeyPem }) => RustLib.instance.api.crateApiCryptotranCreateSecurePayload(text: text, privateKeyPem: privateKeyPem, publicKeyPem: publicKeyPem);
+
+Future<String> verifyAndDecryptPayload({required EncryptedMessage encryptedMessage , required String recipientPrivateKeyPem , required String senderPublicKeyPem }) => RustLib.instance.api.crateApiCryptotranVerifyAndDecryptPayload(encryptedMessage: encryptedMessage, recipientPrivateKeyPem: recipientPrivateKeyPem, senderPublicKeyPem: senderPublicKeyPem);
+
+            class EncryptedMessage  {
+                final String encryptedPayload;
+final String iv;
+final String symmetricKey;
+
+                const EncryptedMessage({required this.encryptedPayload ,required this.iv ,required this.symmetricKey ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => encryptedPayload.hashCode^iv.hashCode^symmetricKey.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is EncryptedMessage &&
+                runtimeType == other.runtimeType
+                && encryptedPayload == other.encryptedPayload&& iv == other.iv&& symmetricKey == other.symmetricKey;
+        
+            }
+
+class RsaKeyPair  {
                 final String privateKeyPem;
 final String publicKeyPem;
 
